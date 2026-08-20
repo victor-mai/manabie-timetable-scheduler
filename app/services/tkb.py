@@ -46,7 +46,7 @@ def _replace_all(session, cells):
 
 
 def grid(session, lop_id):
-    """Lưới TKB của 1 lớp: {tiet_label: {day->'mon(gv)'}}. Dùng cho xem."""
+    """Lưới TKB của 1 lớp: rows = tiết (buổi+stt), cols = ngày, ô = 'MA - Ten GV'."""
     slot_list, _ = build_slots(session)
     days = sorted({s[0] for s in slot_list})
     tiet_labels = []
@@ -58,12 +58,34 @@ def grid(session, lop_id):
             tiet_labels.append(f'{buoi} {stt}')
     mon = {m.id: m.ma for m in session.query(Mon).all()}
     gv = {g.id: g.ten for g in session.query(GiaoVien).all()}
-    day_nhan = {2: 'T2', 3: 'T3', 4: 'T4', 5: 'T5', 6: 'T6', 7: 'T7', 8: 'CN'}
+    day_nhan = {2: 'Thứ 2', 3: 'Thứ 3', 4: 'Thứ 4', 5: 'Thứ 5', 6: 'Thứ 6', 7: 'Thứ 7', 8: 'Chủ nhật'}
     rows = {tl: {day_nhan.get(d, str(d)): '' for d in days} for tl in tiet_labels}
     for t in session.query(Tkb).filter_by(lop_id=lop_id).all():
         lbl = f'{t.buoi} {t.tiet_stt}'
         if lbl in rows and t.thu in days:
-            rows[lbl][day_nhan.get(t.thu, str(t.thu))] = f'{mon.get(t.mon_id, "?")} ({gv.get(t.gv_id, "?")})'
+            rows[lbl][day_nhan.get(t.thu, str(t.thu))] = f'{mon.get(t.mon_id, "?")} — {gv.get(t.gv_id, "?")}'
+    return rows, tiet_labels, days
+
+
+def grid_gv(session, gv_id):
+    """Lịch giảng dạy của 1 GV: rows = tiết, cols = ngày, ô = 'Lớp · Môn'."""
+    slot_list, _ = build_slots(session)
+    days = sorted({s[0] for s in slot_list})
+    tiet_labels = []
+    seen = set()
+    for _thu, buoi, stt in slot_list:
+        key = (buoi, stt)
+        if key not in seen:
+            seen.add(key)
+            tiet_labels.append(f'{buoi} {stt}')
+    mon = {m.id: m.ma for m in session.query(Mon).all()}
+    lop = {l.id: l.ten for l in session.query(Lop).all()}
+    day_nhan = {2: 'Thứ 2', 3: 'Thứ 3', 4: 'Thứ 4', 5: 'Thứ 5', 6: 'Thứ 6', 7: 'Thứ 7', 8: 'Chủ nhật'}
+    rows = {tl: {day_nhan.get(d, str(d)): '' for d in days} for tl in tiet_labels}
+    for t in session.query(Tkb).filter_by(gv_id=gv_id).all():
+        lbl = f'{t.buoi} {t.tiet_stt}'
+        if lbl in rows and t.thu in days:
+            rows[lbl][day_nhan.get(t.thu, str(t.thu))] = f'{lop.get(t.lop_id, "?")} · {mon.get(t.mon_id, "?")}'
     return rows, tiet_labels, days
 
 

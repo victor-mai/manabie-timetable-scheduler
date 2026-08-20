@@ -272,7 +272,7 @@ def page_phan_cong():
             st.success('Phân công khả thi: mọi (lớp, môn) đã có GV & số tiết.')
 
 
-DAY_NHAN = {2: 'T2', 3: 'T3', 4: 'T4', 5: 'T5', 6: 'T6', 7: 'T7', 8: 'CN'}
+DAY_NHAN = {2: 'Thứ 2', 3: 'Thứ 3', 4: 'Thứ 4', 5: 'Thứ 5', 6: 'Thứ 6', 7: 'Thứ 7', 8: 'Chủ nhật'}
 DAY_SO = {v: k for k, v in DAY_NHAN.items()}
 
 
@@ -281,72 +281,84 @@ def page_xep_tkb():
     s = session()
 
     has = tkb_svc.da_co(s)
-    # ---- Xuất / quản lý kết quả ----
+
+    # ---- Điều khiển xếp ----
     c1, c2, c3 = st.columns([1, 1, 3])
     to = c1.selectbox('Thời gian solver (giây)', [15, 60, 120, 300], index=1)
     if c2.button('🧮 Auto xếp'):
-        with st.spinner('Đang xếp...'):
+        with st.spinner('Đang xếp (thường ~10–60s)...'):
             r = tkb_svc.solve(s, timeout_ms=int(to) * 1000)
         if r['status'] == 'sat':
-            st.success(f"Đã xếp **{r['so_o']}** tiết (bấm lại trang để cập nhật)."); st.rerun()
+            st.success(f"Đã xếp **{r['so_o']}** tiết."); st.rerun()
         else:
             st.error(r['error'] or 'Không xếp được.')
     if c3.button('🗑 Xóa TKB đã xếp', disabled=not has):
         tkb_svc.clear(s); st.rerun()
 
-    # ---- Trạng thái & xung đột ----
-    if not has:
-        st.info('Chưa có TKB. Nhấn "Auto xếp" (cần đã Phân công + Số tiết ở Phase 2) hoặc xếp tay bên dưới.')
-        return
-    cells = tkb_svc.load(s)
-    st.caption(f'Đã xếp {len(cells)} tiết.')
-    xd = tkb_svc.xung_dot(s)
-    st.warning(f'Xung đột hiện có: **{len(xd)}**') if xd else st.success('Không có xung đột trùng giờ.')
-
-    # ---- Xem theo lớp ----
-    st.markdown('#### Xem TKB theo lớp')
-    lop_list = [(l.id, l.ten) for l in s.query(Lop).order_by(Lop.khoi_id, Lop.ten).all()]
-    lop_of = dict(lop_list)
-    lop_id = st.selectbox('Chọn lớp', list(lop_of.keys()),
-                          format_func=lambda x: f"{lop_of[x]}", key='sel_lop')
-    rows, tiet_labels, days = tkb_svc.grid(s, lop_id)
-    cols = ['Tiết'] + [DAY_NHAN.get(d, str(d)) for d in days]
-    dfg = pd.DataFrame([{'Tiết': tl, **rows[tl]} for tl in tiet_labels])[cols]
-    st.dataframe(dfg, width='stretch', hide_index=True)
-    if len(xd):
-        st.caption('Chi tiết xung đột:')
-        st.json([{k: v for k, v in x.items()} for x in xd][:20])
-
-    # ---- Chỉnh tay theo lớp ----
-    st.markdown('#### Xếp / chỉnh tay cho lớp')
-    opts = tkb_svc.mon_options_for_lop(s, lop_id)
-    if not opts:
-        st.info('Lớp này chưa có môn được phân công để xếp.')
+    if has:
+        cells = tkb_svc.load(s)
+        xd = tkb_svc.xung_dot(s)
+        st.caption(f'Đã xếp {len(cells)} tiết.')
+        st.warning(f'Xung đột: **{len(xd)}**') if xd else st.success('Không có xung đột trùng giờ.')
     else:
-        mon_names = [''] + [o['ten'] for o in opts]
-        day_cols = [DAY_NHAN.get(d, str(d)) for d in days]
-        edit = [{**{'Tiết': tl}, **{dc: (rows[tl].get(dc, '') or '').rsplit(' (', 1)[0] for dc in day_cols}}
-                for tl in tiet_labels]
-        ed = st.data_editor(
-            pd.DataFrame(edit)[['Tiết'] + day_cols], width='stretch', hide_index=True,
-            key=f'ed_tkb_{lop_id}', disabled=['Tiết'],
-            column_config={dc: cfc.SelectboxColumn(dc, options=mon_names, required=False) for dc in day_cols})
-        if st.button('Lưu TKB lớp này', key=f'save_{lop_id}'):
-            ten2id = {o['ten']: (o['mon_id'], o['gv_id']) for o in opts}
-            new = []
-            for _, r in ed.iterrows():
-                buoi, stt = r['Tiết'].split()
-                stt = int(stt)
-                for dc in day_cols:
-                    val = (r[dc] or '').strip()
-                    if val and val in ten2id:
-                        mid, gid = ten2id[val]
-                        new.append({'lop_id': lop_id, 'mon_id': mid, 'gv_id': gid,
-                                    'thu': DAY_SO[dc], 'buoi': buoi, 'tiet_stt': stt})
-            tkb_svc.replace_lop(s, lop_id, new)
-            xd2 = tkb_svc.xung_dot(s)
-            st.toast(f'Đã lưu {len(new)} ô. Xung đột toàn trường: {len(xd2)}')
-            st.rerun()
+        st.info('Chưa có TKB — bấm "🧮 Auto xếp" hoặc xếp môn từng ô ở phần dưới.')
+
+    st.divider()
+
+    # ---- Xem lịch (theo lớp / theo giáo viên) LUÔN hiển thị ----
+    mode = st.radio('Xem lịch theo', ['Lớp học', 'Giáo viên'], horizontal=True, label_visibility='visible')
+    lop_list = [(l.id, l.ten) for l in s.query(Lop).order_by(Lop.khoi_id, Lop.ten).all()]
+    gv_list = [(g.id, g.ten) for g in s.query(GiaoVien).order_by(GiaoVien.ten).all()]
+
+    if mode == 'Lớp học':
+        lobs = {i: t for i, t in lop_list}
+        st.markdown(f'#### Lịch học lớp — chọn lớp')
+        sel_lop = st.selectbox('Chọn lớp', list(lobs.keys()), format_func=lambda x: lobs[x], key='sel_lop2')
+        rows, tiet_labels, days = tkb_svc.grid(s, sel_lop)
+        cols = ['Tiết'] + [DAY_NHAN.get(d, str(d)) for d in days]
+        dfg = pd.DataFrame([{'Tiết': tl, **rows[tl]} for tl in tiet_labels])[cols]
+        st.dataframe(dfg, width='stretch', hide_index=True)
+        st.caption('Ô = **Môn — Giáo viên**.')
+
+        # --- xếp / chỉnh tay cho lớp này ---
+        st.markdown('##### Xếp / chỉnh tay cho lớp')
+        opts = tkb_svc.mon_options_for_lop(s, sel_lop)
+        if not opts:
+            st.caption('Lớp này chưa có môn được phân công để xếp.')
+        else:
+            mon_names = [''] + [o['ten'] for o in opts]
+            day_cols = [DAY_NHAN.get(d, str(d)) for d in days]
+            edit = [{**{'Tiết': tl}, **{dc: (rows[tl].get(dc, '') or '').rsplit(' — ', 1)[0] for dc in day_cols}}
+                    for tl in tiet_labels]
+            ed = st.data_editor(
+                pd.DataFrame(edit)[['Tiết'] + day_cols], width='stretch', hide_index=True,
+                key=f'ed_tkb_{sel_lop}', disabled=['Tiết'],
+                column_config={dc: cfc.SelectboxColumn(dc, options=mon_names, required=False) for dc in day_cols})
+            if st.button('Lưu TKB lớp này', key=f'save_{sel_lop}'):
+                ten2id = {o['ten']: (o['mon_id'], o['gv_id']) for o in opts}
+                new = []
+                for _, r in ed.iterrows():
+                    buoi, stt = r['Tiết'].split()
+                    stt = int(stt)
+                    for dc in day_cols:
+                        val = (r[dc] or '').strip()
+                        if val and val in ten2id:
+                            mid, gid = ten2id[val]
+                            new.append({'lop_id': sel_lop, 'mon_id': mid, 'gv_id': gid,
+                                        'thu': DAY_SO[dc], 'buoi': buoi, 'tiet_stt': stt})
+                tkb_svc.replace_lop(s, sel_lop, new)
+                xd2 = tkb_svc.xung_dot(s)
+                st.toast(f'Đã lưu {len(new)} ô. Xung đột toàn trường: {len(xd2)}')
+                st.rerun()
+    else:
+        gobs = {i: t for i, t in gv_list}
+        st.markdown(f'#### Lịch giảng dạy — chọn giáo viên')
+        sel_gv = st.selectbox('Chọn giáo viên', list(gobs.keys()), format_func=lambda x: gobs[x], key='sel_gv2')
+        rows, tiet_labels, days = tkb_svc.grid_gv(s, sel_gv)
+        cols = ['Tiết'] + [DAY_NHAN.get(d, str(d)) for d in days]
+        dfg = pd.DataFrame([{'Tiết': tl, **rows[tl]} for tl in tiet_labels])[cols]
+        st.dataframe(dfg, width='stretch', hide_index=True)
+        st.caption('Ô = **Lớp · Môn** giáo viên đó dạy.')
 
 
 def page_cau_hinh():
