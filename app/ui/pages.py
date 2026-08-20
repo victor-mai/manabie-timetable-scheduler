@@ -7,7 +7,7 @@ import streamlit as st
 
 from app import db
 from app.models import GiaoVien, Khoi, KhoiMonTiet, Lop, Mon, NgayHoc, Tiet
-from app.services import feasibility, phan_cong as pc_svc, rang_buoc as rb_svc, seeder
+from app.services import feasibility, phan_cong as pc_svc, rang_buoc as rb_svc, seeder, tkb as tkb_svc
 from app.services.import_export import build_workbook
 from streamlit import column_config as cfc
 
@@ -272,9 +272,81 @@ def page_phan_cong():
             st.success('Phân công khả thi: mọi (lớp, môn) đã có GV & số tiết.')
 
 
-def trang_xep_tkb():
-    st.subheader('Xếp thời khóa biểu (Phase 4)')
-    st.info('Sẽ xây ở Phase 4: auto (solver) + xếp tay + tinh chỉnh + tìm xung đột.')
+DAY_NHAN = {2: 'T2', 3: 'T3', 4: 'T4', 5: 'T5', 6: 'T6', 7: 'T7', 8: 'CN'}
+DAY_SO = {v: k for k, v in DAY_NHAN.items()}
+
+
+def page_xep_tkb():
+    st.subheader('Xếp thời khóa biểu')
+    s = session()
+
+    has = tkb_svc.da_co(s)
+    # ---- Xuất / quản lý kết quả ----
+    c1, c2, c3 = st.columns([1, 1, 3])
+    to = c1.selectbox('Thời gian solver (giây)', [15, 60, 120, 300], index=1)
+    if c2.button('🧮 Auto xếp'):
+        with st.spinner('Đang xếp...'):
+            r = tkb_svc.solve(s, timeout_ms=int(to) * 1000)
+        if r['status'] == 'sat':
+            st.success(f"Đã xếp **{r['so_o']}** tiết (bấm lại trang để cập nhật)."); st.rerun()
+        else:
+            st.error(r['error'] or 'Không xếp được.')
+    if c3.button('🗑 Xóa TKB đã xếp', disabled=not has):
+        tkb_svc.clear(s); st.rerun()
+
+    # ---- Trạng thái & xung đột ----
+    if not has:
+        st.info('Chưa có TKB. Nhấn "Auto xếp" (cần đã Phân công + Số tiết ở Phase 2) hoặc xếp tay bên dưới.')
+        return
+    cells = tkb_svc.load(s)
+    st.caption(f'Đã xếp {len(cells)} tiết.')
+    xd = tkb_svc.xung_dot(s)
+    st.warning(f'Xung đột hiện có: **{len(xd)}**') if xd else st.success('Không có xung đột trùng giờ.')
+
+    # ---- Xem theo lớp ----
+    st.markdown('#### Xem TKB theo lớp')
+    lop_list = [(l.id, l.ten) for l in s.query(Lop).order_by(Lop.khoi_id, Lop.ten).all()]
+    lop_of = dict(lop_list)
+    lop_id = st.selectbox('Chọn lớp', list(lop_of.keys()),
+                          format_func=lambda x: f"{lop_of[x]}", key='sel_lop')
+    rows, tiet_labels, days = tkb_svc.grid(s, lop_id)
+    cols = ['Tiết'] + [DAY_NHAN.get(d, str(d)) for d in days]
+    dfg = pd.DataFrame([{'Tiết': tl, **rows[tl]} for tl in tiet_labels])[cols]
+    st.dataframe(dfg, width='stretch', hide_index=True)
+    if len(xd):
+        st.caption('Chi tiết xung đột:')
+        st.json([{k: v for k, v in x.items()} for x in xd][:20])
+
+    # ---- Chỉnh tay theo lớp ----
+    st.markdown('#### Xếp / chỉnh tay cho lớp')
+    opts = tkb_svc.mon_options_for_lop(s, lop_id)
+    if not opts:
+        st.info('Lớp này chưa có môn được phân công để xếp.')
+    else:
+        mon_names = [''] + [o['ten'] for o in opts]
+        day_cols = [DAY_NHAN.get(d, str(d)) for d in days]
+        edit = [{**{'Tiết': tl}, **{dc: (rows[tl].get(dc, '') or '').rsplit(' (', 1)[0] for dc in day_cols}}
+                for tl in tiet_labels]
+        ed = st.data_editor(
+            pd.DataFrame(edit)[['Tiết'] + day_cols], width='stretch', hide_index=True,
+            key=f'ed_tkb_{lop_id}', disabled=['Tiết'],
+            column_config={dc: cfc.SelectboxColumn(dc, options=mon_names, required=False) for dc in day_cols})
+        if st.button('Lưu TKB lớp này', key=f'save_{lop_id}'):
+            ten2id = {o['ten']: (o['mon_id'], o['gv_id']) for o in opts}
+            new = []
+            for _, r in ed.iterrows():
+                buoi, stt = r['Tiết'].split()
+                stt = int(stt)
+                for dc in day_cols:
+                    val = (r[dc] or '').strip()
+                    if val and val in ten2id:
+                        mid, gid = ten2id[val]
+                        new.append({'lop_id': lop_id, 'mon_id': mid, 'gv_id': gid,
+                                    'thu': DAY_SO[dc], 'buoi': buoi, 'tiet_stt': stt})
+            tkb_svc.replace_lop(s, lop_id, new)
+            xd2 = tkb_svc.xung_dot(s)
+            st.toast(f'Đã lưu {len(new)} ô. Xung đột toàn trường: {len(xd2)}')
+            st.rerun()
 
 
 def page_cau_hinh():

@@ -123,3 +123,18 @@ class RangBuoc(Base):
     hard = Column(Boolean, default=True)
     trong_so = Column(Integer, default=1)
     ghi_chu = Column(String(200), default='')
+
+
+class Tkb(Base):
+    """Kết quả xếp TKB (Phase 4): 1 dòng = 1 ô gán (lớp, môn, GV) tại (thu, buoi, tiết)."""
+    __tablename__ = 'tkb'
+    id = Column(Integer, primary_key=True)
+    lop_id = Column(ForeignKey('lop.id'), nullable=False)
+    mon_id = Column(ForeignKey('mon.id'), nullable=False)
+    gv_id = Column(ForeignKey('giao_vien.id'), nullable=False)
+    thu = Column(Integer, nullable=False)          # 2..8
+    buoi = Column(String(20), nullable=False)      # Sáng|Chiều|Tối
+    tiet_stt = Column(Integer, nullable=False)     # stt trong buổi
+    lop = relationship('Lop')
+    mon = relationship('Mon')
+    gv = relationship('GiaoVien')

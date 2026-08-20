@@ -46,8 +46,10 @@ def main():
         'Cấu hình ràng buộc (P3)': [
             st.Page(pages.page_cau_hinh, title='Ràng buộc (GV nghỉ / môn cố định / giới hạn)', url_path='cau-hinh'),
         ],
-        'Sắp tới (P4–6)': [
-            st.Page(pages.trang_xep_tkb, title='Xếp TKB (P4)', url_path='xep-tkb'),
+        'Xếp thời khóa biểu (P4)': [
+            st.Page(pages.page_xep_tkb, title='Xếp / chỉnh tay / xem TKB', url_path='xep-tkb'),
+        ],
+        'Sắp tới (P5–6)': [
             st.Page(pages.trang_xuat, title='Xuất bản (P5)', url_path='xuat-ban'),
             st.Page(pages.trang_nang_cao, title='Nâng cao (P6)', url_path='nang-cao'),
         ],
@@ -57,7 +59,7 @@ def main():
     # thông tin file dữ liệu ở sidebar
     st.sidebar.caption('')
     st.sidebar.caption(f'📄 File dữ liệu: `{db.data_path()}`')
-    st.sidebar.caption('Phase hiện tại: 0–3 (Khai báo + Phân công + Số tiết + Ràng buộc)')
+    st.sidebar.caption('Phase hiện tại: 0–4 (Khai báo + Phân công + Số tiết + Ràng buộc + Xếp TKB)')
 
     pg.run()
 
