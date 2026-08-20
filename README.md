@@ -9,6 +9,8 @@
 
 > 🗺️ **Bản đồ tiến hành (tech stack + 6 phase):** xem **[ROADMAP.md](ROADMAP.md)** — plan xây dựng app cho 1 trường, tech stack, kiến trúc, và mục "quyết định cần chốt" trước khi code.
 
+> 📄 **HANDOFF (session tiếp theo đọc đầu tiên):** xem **[HANDOFF.md](HANDOFF.md)** — trạng thái, cách chạy, quirk môi trường, việc còn lại.
+
 ---
 
 ## 🚀 Trạng thái & Cách chạy (Phase 0–5)
