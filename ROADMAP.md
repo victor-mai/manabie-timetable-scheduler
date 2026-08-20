@@ -39,15 +39,15 @@ Từ nghiên cứu 2 đối thủ, mình gom thành **2 mức**:
 | Thành phần | Lựa chọn | Lý do |
 |---|---|---|
 | **Ngôn ngữ** | Python 3.11+ | Solver + backend một xích, sinh ra cho bài này |
-| **Backend framework** | **FastAPI + Uvicorn** | Nhẹ, hiện đại, API + serve static/template tốt |
+| **UI/Backend** | **Streamlit** | Thuần Python, dựng CRUD/form/bảng cực nhanh, tự mở trình duyệt local — hợp "1 dev + mở local" |
 | **Solver xếp TKB** | **Google OR-Tools (CP-SAT)** | Chuẩn công nghiệp cho timetable; tách bạch hard/soft + trọng số |
-| **DB** | **SQLite + SQLAlchemy** | 1 file, 0 cài đặt, kéo đi đâu chạy đó — hợp "1 trường xài local" |
-| **Xuất Excel/Import** | **openpyxl** (kèm pandas nếu cần) | Đọc/ghi .xlsx chuẩn, nhà trường quen Excel |
-| **Frontend** | Xem mục 5 | Hai phương án: nhanh (server-render) hoặc đẹp (React) |
-| **Tooling** | pip/uv, pytest, git, python-dotenv | Phát triển, test, version |
+| **DB / lưu trữ** | **SQLite** (1 file `.sqlite`) + SQLAlchemy | Chính là nguồn lưu trữ; **xuất/load lại bằng cách download/upload file này** |
+| **Xuất Excel/Import** | **openpyxl** | Đọc/ghi .xlsx, nhà trường quen Excel; song song với file SQLite |
+| **Phân phối local** | **PyInstaller** → thư mục + `run.exe`, nén ZIP | Trường giải nén chạy exe, **không cần cài Python**; đóng gói cần hidden-import cho OR-Tools |
+| **Tooling** | uv/pip, pytest, git | Phát triển, test, version |
 
 ### Dependencies cốt lõi (requirements)
-`fastapi`, `uvicorn[standard]`, `or-tools`, `sqlalchemy`, `jinja2`, `python-multipart`, `openpyxl`, `pydantic` (bundle trong FastAPI), `pytest`.
+`streamlit`, `or-tools`, `sqlalchemy`, `openpyxl`, `python-multipart`, `pandas`, `pytest`, `pyinstaller` (lúc đóng gói).
 
 ---
 
@@ -55,33 +55,38 @@ Từ nghiên cứu 2 đối thủ, mình gom thành **2 mức**:
 
 ```
 Người dùng (giáo vụ/BGH) — trình duyệt
-        │  (HTML+JS / hoặc React)
+        │
         ▼
-FastAPI app (1 process, uvicorn)
- ├─ routes: khai-báo / phan-cong / set-tiet / cau-hinh / ghep-lop ... (xem §3 doc TKB)
+Streamlit app (1 process, `streamlit run app.py` / `run.exe`)
+ ├─ pages theo chức năng: khai-báo / phan-cong / set-tiet / cau-hinh / xep-tkb / xuat-ban (xem §3 doc TKB)
  ├─ solver: module OR-Tools CP-SAT (biến, hard/soft, tối ưu)
- ├─ services: validate, counts (khả thi), export excel, import excel
- └─ ORM: SQLAlchemy → SQLite  (1 file)
+ ├─ services: validate, khả thi (PCCM), import/export Excel
+ └─ ORM: SQLAlchemy → SQLite  (1 file `data.sqlite` — xuất/import được)
 ```
 
-- Thiết kế **API tách rời** (endpoint rõ ràng) để sau có thể đổi frontend lên React mà không đụng logic.
-- **Mô hình dữ liệu** gồm: `School`(cơ sở), `Khoi`, `Lop`(→cơ sở), `Mon`, `GiaoVien`, `Tiet`(buổi+lý tự), `NgayHoc`, `PhanCong`, `KhoiMonTiet`(số tiết+phân bổ liên tiếp), `RangBuoc`(ngày/buổi/tiết nghỉ, môn cố định, giới hạn, nguyện vọng).
+- Thiết kế **tách logic nghiệp vụ + solver thành module riêng** (không nhét vào UI) để dễ test và, nếu sau cần UI đẹp hơn, gắn bằng Streamlit component hoặc tách frontend.
+- **Mô hình dữ liệu** gồm: `Truong`(cơ sở), `Khoi`, `Lop`(→cơ sở), `Mon`, `GiaoVien`, `Tiet`(buổi+lý tự), `NgayHoc`, `PhanCong`, `KhoiMonTiet`(số tiết+phân bổ liên tiếp), `RangBuoc`(ngày/buổi/tiết nghỉ, môn cố định, giới hạn, nguyện vọng).
 
 ---
 
-## 5. Frontend — 2 phương án (CẦN BẠN CHỐT)
+## 5. Frontend & Phân phối — chốt theo nguyện vọng "trường tự mở local"
 
-**Phương án A — Nhanh, 1 process (khuyên cho MVP):**
-- **Jinja2** server-side + **Tailwind CSS** + **SortableJS** (kéo-thả ô TKB) / **FullCalendar** tùy chọn. Vanilla JS.
-- Ưu: dựng nhanh nhất, không hai tiến trình, đúng đối tượng "1 dev".
-- Nhược: UI "động" phức tạp khó hơn code.js.
+### 5.1 UI — **Streamlit** (khuyên dùng cho MVP)
+- Thuần Python: sidebar-nav, `st.form` (nhập liệu), `st.dataframe`/`st.data_editor` (bảng), `st.file_uploader` (import), `st.download_button` (xuất), `st.progress` (chạy solver).
+- Chạy `streamlit run app.py` là có ngay, tự mở trình duyệt localhost.
+- **Giới hạn đã thừa nhận**: thao tác **kéo-thả ô TKB không native**. Xếp tay MVP dùng **`st.data_editor`** (chọn môn từng ô) + **nút kiểm tra xung đột**. Có thể nâng bằng Streamlit component tuỳ biến nếu trường cần drag-drop thật.
 
-**Phương án B — Đẹp/chuẩn web-app (bản "hoàn chỉnh"):**
-- Tách frontend: **React + Vite + Ant Design** (Table, Select, Calendar) giao tiếp REST API.
-- Ưu: giao diện quản trị chuẩn, kéo-thả grid tốt cho màn TKB.
-- Nhược: thêm 1 build/2 tiến trình, lâu hơn.
+### 5.2 Phân phối — **ZIP chứa thư mục + `run.exe`** (PyInstaller)
+- Đóng `app.py` + UI + môi trường → thư mục chạy được → nén ZIP.
+- Trường: **giải nén → double-click `run.exe`/`.bat`** → trình duyệt tự mở. **Không cần cài Python.**
+- Dòng `run` giúp chọn file dữ liệu, mở đúng port, log lỗi ra file.
 
-> **Khuyến nghị:** Phương án A để có bản chạy được nhanh; giữ API sạch để sau này nâng lên B khi cần.
+### 5.3 Lưu trữ & di dời dữ liệu (đúng mong muốn "file SQLite")
+- App đọc/ghi **1 file `data.sqlite`** (mặc định trong thư mục app; có thể chọn đường dẫn khác).
+- **Xuất để lưu trữ**: nút *Tải dữ liệu (SQLite)* → download `data.sqlite`; option tự backup theo ngày.
+- **Load lại khi cần**: nút *Tải lên / chọn file SQLite* → app mở file đó làm CSDL.
+- **Excel** song song: xuất từng bảng / toàn TKB (openpyxl); import dữ liệu nền từ Excel lần đầu.
+- Nhờ đó: mang thư mục (hoặc chỉ file `.sqlite`) đi đâu cũng mở lại được, không mất dữ liệu.
 
 ---
 
@@ -89,12 +94,12 @@ FastAPI app (1 process, uvicorn)
 
 | Phase | Nội dung | Deliverable | "Xong" khi |
 |---|---|---|---|
-| **0. Khung sườn** | Setup repo, app FastAPI chạy được, SQLite, schema entities, shell trang | App `uvicorn` chạy local, trang trống | `GET /` ra trang, DB tạo được |
-| **1. Khai báo dữ liệu** | CRUD khối/lớp/môn/GV/tiết+buổi/ngày học + **import Excel** | Màn nhập liệu + import | Nhập được 1 trường mẫu; xuất được danh sách |
+| **0. Khung sườn** | Init repo, Streamlit app chạy được, schema SQLite entities, shell trang + nav | App `streamlit run app.py` mở local, shell các trang | Mở được app, DB `data.sqlite` tự tạo |
+| **1. Khai báo dữ liệu** | CRUD khối/lớp/môn/GV/tiết+buổi/ngày học + **import Excel** | Màn nhập liệu + import | Nhập được 1 trường mẫu; xuất danh sách ra Excel |
 | **2. Phân công + Set tiết** | Phân công GV–môn–lớp (check trùng); Set số tiết khối–môn + phân bổ liên tiếp | Màn phân công + khối–môn–tiết | Phân công + số tiết chuẩn; **chỉ số khả thi** hiển thị |
 | **3. Ràng buộc cấu hình** | ngày học, buổi, tiết nghỉ, môn cố định, giới hạn tiết/GV/buổi, nguyện vọng | Form cấu hình theo loại ràng buộc | Xác định được hard/soft; lưu/đổi được |
 | **4. Solver + Xếp + Chỉnh tay** | OR-Tools CP-SAT (hard đúng, soft trọng số); **auto xếp**; **màn TKB kéo-thả**; tinh chỉnh; **tìm & thay thế trùng** | Bấm "Auto xếp" → ra TKB; chỉnh tay tô đỏ xung đột | Xếp được TKB 1 trường thật; không vi phạm hard |
-| **5. Xuất bản** | Xuất Excel (lớp/GV), in theo mẫu; backup/restore | Nút xuất Excel/in | File Excel mở đúng, đã đủ cột, in được |
+| **5. Xuất bản + Phân phối** | Xuất Excel (lớp/GV), in theo mẫu; **Xuất/Load lại file `data.sqlite`**; backup/restore; **đóng gói PyInstaller → ZIP "mở local"** | Nút xuất Excel + tải/lưu file SQLite; file ZIP trường chạy được | File Excel mở đúng; đổi `data.sqlite` là đổi dữ liệu; trường chạy được `run.exe` không cần Python |
 | **6. Nâng cao** | Tổ hợp môn, ghép/tách lớp, nhiều GV, 2 buổi, **đa cơ sở**, xếp phòng, PCCM, công khai link | Các module nâng cao | Mỗi module test được với dữ liệu trường mẫu |
 
 > Phase 1–5 là **MVP**; Phase 6 là nâng cao dần theo nhu cầu.
@@ -103,7 +108,7 @@ FastAPI app (1 process, uvicorn)
 
 ## 7. Rủi ro & quyết định cần chốt (để bạn duyệt trước khi code)
 
-1. **Frontend**: Phương án A (nhanh) hay B (đẹp)? *(khuyến nghị A trước)*
+1. ✅ **UI**: đã chốt **Streamlit** cho MVP (mở local + file SQLite như bạn yêu cầu). Còn 1 điểm cần xác nhận: xếp tay MVP bằng `st.data_editor` (chọn môn từng ô) — **bạn có chấp nhận tạm thời chưa có kéo-thả mượt** không? (nâng drag-drop thật là Phase 6/component).
 2. **Phạm vi MVP**: chỉ làm tới Phase 5 (không phòng/đa cơ sở/PCCM ngay), hay cần ưu tiên đa cơ sở sớm?
 3. **Dữ liệu mẫu**: bạn có 1 trường thật (khối/lớp/môn/GV/tiết) để test từ đầu không, hay mình tạo dữ liệu mẫu giả lập 1 trường THPT 2 buổi?
 4. **Xếp phòng** có phải ràng buộc bắt buộc ngay không (nhiều trường cần) hay gác lại?
