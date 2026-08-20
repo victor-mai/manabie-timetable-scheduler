@@ -49,9 +49,11 @@ def main():
         'Xếp thời khóa biểu (P4)': [
             st.Page(pages.page_xep_tkb, title='Xếp / chỉnh tay / xem TKB', url_path='xep-tkb'),
         ],
-        'Sắp tới (P5–6)': [
-            st.Page(pages.trang_xuat, title='Xuất bản (P5)', url_path='xuat-ban'),
-            st.Page(pages.trang_nang_cao, title='Nâng cao (P6)', url_path='nang-cao'),
+        'Xuất bản (P5)': [
+            st.Page(pages.page_xuat, title='Xuất Excel TKB', url_path='xuat-ban'),
+        ],
+        'Sắp tới (P6)': [
+            st.Page(pages.trang_nang_cao, title='Nâng cao', url_path='nang-cao'),
         ],
     }
 
@@ -59,7 +61,7 @@ def main():
     # thông tin file dữ liệu ở sidebar
     st.sidebar.caption('')
     st.sidebar.caption(f'📄 File dữ liệu: `{db.data_path()}`')
-    st.sidebar.caption('Phase hiện tại: 0–4 (Khai báo + Phân công + Số tiết + Ràng buộc + Xếp TKB)')
+    st.sidebar.caption('Phase hiện tại: 0–5 (Khai báo + Phân công + Ràng buộc + Xếp TKB + Xuất Excel)')
 
     pg.run()
 

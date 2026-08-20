@@ -11,20 +11,17 @@
 
 ---
 
-## 🚀 Trạng thái & Cách chạy (Phase 0–4)
+## 🚀 Trạng thái & Cách chạy (Phase 0–5)
 
-**Đã làm được (Phase 0–4):**
+**Đã làm được (Phase 0–5):**
 - Skeleton **Streamlit** chạy được, lưu trữ = **1 file `data.sqlite`**.
-- Schema SQLite: `co_so, khoi, lop, mon, giao_vien, tiet, ngay_hoc, phan_cong, khoi_mon_tiet, rang_buoc, tkb`.
-- Màn **Tổng quan**, **Khai báo** (Khối/Lớp/Môn/GV/Tiết&Buổi/Ngày) + tải/lưu file `.sqlite` + xuất Excel.
-- **(P2)** **Số tiết khối–môn** (+ phân bổ `2,1,1`); **Phân công giảng dạy** + nút kiểm tra khả thi.
-- **(P3)** **Cấu hình ràng buộc**: GV nghỉ/bận (ngày hoặc đúng thứ–buổi–tiết), môn cố định (thứ–buổi–tiết), giới hạn tiết/GV/buổi.
-- **(P4)** **Xếp TKB**:
-  - **Auto xếp** bằng solver (hiện **Z3 SAT**; OR-Tools bị chặn mạng — interface giữ để đổi) tôn trọng mọi hard ràng buộc P3 + phân công P2. Kết quả mẫu: 1 trường THCS 8 lớp → **sat, ~12s, 208 tiết, 0 xung đột**.
-  - **Xem TKB theo lớp** (lưới ngày × tiết).
-  - **Xếp/chỉnh tay** theo lớp (chọn môn từng ô), lưu + tự **kiểm tra xung đột** (GV/lớp trùng giờ).
-  - `app/solver/z3_solver.py` + `app/services/tkb.py`.
-- **Dữ liệu mẫu** 1 trường THCS 2 buổi (seed): khối 6–9, 8 lớp, 12 môn, 19 GV, 88 phân công.
+- Schema: `co_so, khoi, lop, mon, giao_vien, tiet, ngay_hoc, phan_cong, khoi_mon_tiet, rang_buoc, tkb`.
+- **Khai báo** (Khối/Lớp/Môn/GV/Tiết&Buổi/Ngày) + tải/lưu file `.sqlite` + xuất Excel bảng nền.
+- **(P2)** **Số tiết khối–môn** (+ phân bổ `2,1,1`); **Phân công giảng dạy** + kiểm tra khả thi.
+- **(P3)** **Cấu hình ràng buộc**: GV nghỉ/bận, môn cố định, giới hạn tiết/GV/buổi.
+- **(P4)** **Xếp TKB**: Auto (Z3 SAT; OR-Tools bị chặn mạng — abstraction để đổi) → 1 trường THCS 8 lớp **sat ~11s / 208 tiết / 0 xung đột**; **xem lịch theo lớp / theo giáo viên** (ô = Môn — GV / Lớp · Môn), **xếp–chỉnh tay**, tìm xung đột.
+- **(P5)** **Xuất bản**: xuất **Excel TKB** theo **lớp** / theo **giáo viên** / **toàn trường** (mỗi lớp 1 sheet).
+- **Dữ liệu mẫu** THCS 2 buổi (seed): khối 6–9, 8 lớp, 12 môn, 19 GV, 88 phân công.
 - **Kiểm thử:** mọi trang render (AppTest); solver + service verify (tạm script, không phải test-suite chuẩn).
 
 **Chạy app (dev):**
@@ -40,7 +37,7 @@ Trình duyệt tự mở `http://localhost:8501`.
 - **OR-Tools bị chặn ở tầng mạng** (PyPI trả 404) → MVP dùng **Z3**; kích hoạt `or-tools` trong `requirements.txt` khi mạng cho phép, solver đã được viết dạng abstraction để đổi được.
 - Trên máy dev đang chạy trong môi trường Hermes, `PYTHONPATH` có thể bị rò vào venv dự án → dùng `env -u PYTHONPATH` (hoặc `run.bat` với `set "PYTHONPATH="`) khi chạy/install.
 
-**Phase tiếp theo:** Xem [ROADMAP.md](ROADMAP.md) → Phase 5 (Xuất Excel TKB theo lớp/GV, in, đóng gói ZIP/exe cho trường tự mở local, xuất/load file `.sqlite`), Phase 6 (nâng cao).
+**Phase tiếp theo:** Xem [ROADMAP.md](ROADMAP.md) → **Đóng gói portable** (PyInstaller → thư mục `run.exe` → ZIP để trường giải nén chạy local, không cài gì vào máy; OR-Tools bật khi mạng cho). Phase 6 (nâng cao: đa cơ sở, tổ hợp môn, ghép lớp…).
 
 ---
 

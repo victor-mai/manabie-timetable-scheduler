@@ -7,7 +7,7 @@ import streamlit as st
 
 from app import db
 from app.models import GiaoVien, Khoi, KhoiMonTiet, Lop, Mon, NgayHoc, Tiet
-from app.services import feasibility, phan_cong as pc_svc, rang_buoc as rb_svc, seeder, tkb as tkb_svc
+from app.services import feasibility, phan_cong as pc_svc, rang_buoc as rb_svc, seeder, tkb as tkb_svc, xuat as xuat_svc
 from app.services.import_export import build_workbook
 from streamlit import column_config as cfc
 
@@ -413,9 +413,37 @@ def page_cau_hinh():
     st.caption(f"Tổng: {rb_svc.tong_hop(s)}")
 
 
-def trang_xuat():
-    st.subheader('Xuất bản & Phân phối (Phase 5)')
-    st.info('Sẽ xây ở Phase 5: xuất Excel TKB, in, đóng gói ZIP/exe.')
+def page_xuat():
+    st.subheader('Xuất bản & Phân phối')
+    s = session()
+    if not tkb_svc.da_co(s):
+        st.info('Chưa có TKB để xuất. Hãy xếp TKB trước (trang "Xếp thời khóa biểu").')
+        return
+    st.caption('Xuất thời khóa biểu ra file Excel (.xlsx) để in / chia sẻ.')
+
+    loai = st.radio('Xuất theo', ['Lớp học', 'Giáo viên', 'Toàn trường'], horizontal=True, key='xuat_loai')
+    if loai == 'Lớp học':
+        lobs = [(l.id, l.ten) for l in s.query(Lop).order_by(Lop.khoi_id, Lop.ten).all()]
+        sel = st.selectbox('Chọn lớp', [i for i, _ in lobs], format_func=lambda x: dict(lobs)[x], key='xuat_lop')
+        if st.button('Tải Excel TKB lớp này'):
+            st.download_button('⬇ Tải TKB lớp (xlsx)', xuat_svc.xuat_lop(s, sel).getvalue(),
+                               file_name=f'tkb_lop_{dict(lobs)[sel]}.xlsx',
+                               mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    elif loai == 'Giáo viên':
+        gobs = [(g.id, g.ten) for g in s.query(GiaoVien).order_by(GiaoVien.ten).all()]
+        sel = st.selectbox('Chọn giáo viên', [i for i, _ in gobs], format_func=lambda x: dict(gobs)[x], key='xuat_gv')
+        if st.button('Tải Excel lịch giáo viên'):
+            st.download_button('⬇ Tải lịch GV (xlsx)', xuat_svc.xuat_gv(s, sel).getvalue(),
+                               file_name=f'lich_{dict(gobs)[sel]}.xlsx',
+                               mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    else:
+        if st.button('Tải Excel toàn trường (mỗi lớp 1 sheet)'):
+            st.download_button('⬇ Tải toàn trường (xlsx)', xuat_svc.xuat_toan_truong(s).getvalue(),
+                               file_name='tkb_toan_truong.xlsx',
+                               mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+    st.divider()
+    st.caption('💾 Lưu/load dữ liệu `.sqlite` (backup, mang đi) — xem ở trang **Tổng quan & Dữ liệu**.')
 
 
 def trang_nang_cao():
