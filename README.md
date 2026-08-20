@@ -7,6 +7,8 @@
 > 🔍 **Nghiên cứu sâu OLM TKB (đối thủ mạnh nhất VN):** xem **[OLM_TKB_RESEARCH.md](OLM_TKB_RESEARCH.md)** — mô hình dữ liệu & toàn bộ ràng buộc TKB Việt Nam (1/2 buổi, sáng–chiều, tiết liên tiếp, tiết tránh, tổ hợp môn, ghép lớp/GV…).
 > 🖥️ **Nghiên cứu sâu TKB (tkb.com.vn) — admin thực tế:** xem **[TKBDOTCOM_RESEARCH.md](TKBDOTCOM_RESEARCH.md)** — feature map, flow 8 bước, toàn bộ ràng buộc, PCCM, đa cơ sở, phòng → nguồn tham chiếu để liệt kê tính năng cần build.
 
+> 🗺️ **Bản đồ tiến hành (tech stack + 6 phase):** xem **[ROADMAP.md](ROADMAP.md)** — plan xây dựng app cho 1 trường, tech stack, kiến trúc, và mục "quyết định cần chốt" trước khi code.
+
 ---
 
 ## 1. Bản chất bài toán
