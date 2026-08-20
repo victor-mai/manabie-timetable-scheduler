@@ -11,6 +11,33 @@
 
 ---
 
+## 🚀 Trạng thái & Cách chạy (Phase 0–1)
+
+**Đã làm được (Phase 0–1):**
+- Skeleton **Streamlit** chạy được, lưu trữ = **1 file `data.sqlite`**.
+- Schema SQLite: `co_so, khoi, lop, mon, giao_vien, tiet, ngay_hoc, phan_cong, khoi_mon_tiet`.
+- Màn **Tổng quan** (dashboard + tạo dữ liệu mẫu + tải/lưu file `.sqlite` + xuất Excel).
+- Trang **Khai báo**: Khối, Lớp, Môn, Giáo viên, Tiết & Buổi, Ngày học.
+- **Dữ liệu mẫu 1 trường THCS 2 buổi** (seed): 1 cơ sở — khối 6–9 — 8 lớp — 12 môn GDPT2018 — 19 GV — 88 phân công.
+- Service **khả thi (PCCM)** đếm quỹ/tải GV; **solver abstraction** + `find_conflicts` (tìm xung đột trùng giờ).
+
+**Chạy app (dev):**
+```bash
+uv venv --python "path/to/python312.exe" .venv
+env -u PYTHONPATH uv pip install --python .venv/Scripts/python.exe -r requirements.txt
+env -u PYTHONPATH .venv/Scripts/python.exe -m streamlit run app.py
+# hoặc trên Windows: chạy `run.bat`
+```
+Trình duyệt tự mở `http://localhost:8501`.
+
+**Lưu ý môi trường:**
+- **OR-Tools bị chặn ở tầng mạng** (PyPI trả 404) → MVP dùng **Z3**; kích hoạt `or-tools` trong `requirements.txt` khi mạng cho phép, solver đã được viết dạng abstraction để đổi được.
+- Trên máy dev đang chạy trong môi trường Hermes, `PYTHONPATH` có thể bị rò vào venv dự án → dùng `env -u PYTHONPATH` (hoặc `run.bat` với `set "PYTHONPATH="`) khi chạy/install.
+
+**Phase tiếp theo:** Xem [ROADMAP.md](ROADMAP.md) → Phase 2 (Phân công + Số tiết), Phase 3 (ràng buộc), Phase 4 (Xếp + solver), Phase 5 (xuất bản + đóng gói ZIP/exe).
+
+---
+
 ## 1. Bản chất bài toán
 
 Tạo TKB cả trường **không phải** chuyện "xếp tay" hay brute-force — bản chất là một bài toán **ràng buộc (Constraint-Satisfaction Problem / Scheduling)**. Không tự viết thuật toán từ đầu mà phải dùng **constraint solver** chuyên dụng.

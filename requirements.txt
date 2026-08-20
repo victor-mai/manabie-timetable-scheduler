@@ -1,0 +1,10 @@
+# manabie-timetable-scheduler — Python 3.12
+# Lưu ý solver: OR-Tools là lựa chọn ưu tiên, NHƯNG bị chặn ở tầng mạng hiện tại (PyPI 404).
+# MVP dùng z3-solver (hoạt động được); kích hoạt OR-Tools bằng cách dỡ comment dòng dưới khi mạng cho phép.
+streamlit>=1.40
+z3-solver
+python-constraint
+sqlalchemy>=2.0
+openpyxl
+pandas
+# or-tools   # << bị chặn mạng -> bỏ comment để bật khi được
