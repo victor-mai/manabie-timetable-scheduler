@@ -99,3 +99,27 @@ class KhoiMonTiet(Base):
     phan_bo = Column(String(30), default='')        # vd '2,1,1'
     khoi = relationship('Khoi', back_populates='khoimontiet')
     mon = relationship('Mon')
+
+
+class RangBuoc(Base):
+    """Ràng buộc (Phase 3) — loại chuẩn hóa để solver dùng ở Phase 4.
+
+    loai:
+      GV_NGAY_NGHI     : GV nghỉ trọn 1 ngày (gv_id, thu)
+      GV_TIET_NGHI     : GV bận 1 (thu, buoi, tiet_stt)
+      MON_CO_DINH      : môn phải ở (thu, buoi, tiet_stt) (mon_id)
+      GIOI_HAN_TIET_BUOI : GV tối đa X tiết/buổi (gv_id, buoi, gia_tri=X)
+    `hard` = ràng buộc cứng (mặc định True); `trong_so` dự trữ cho soft (Phase 4+).
+    """
+    __tablename__ = 'rang_buoc'
+    id = Column(Integer, primary_key=True)
+    loai = Column(String(30), nullable=False)
+    gv_id = Column(ForeignKey('giao_vien.id'), nullable=True)
+    mon_id = Column(ForeignKey('mon.id'), nullable=True)
+    thu = Column(Integer, nullable=True)           # 2..8 (Chủ nhật=8)
+    buoi = Column(String(20), nullable=True)       # Sáng|Chiều|Tối
+    tiet_stt = Column(Integer, nullable=True)      # stt trong buổi
+    gia_tri = Column(Integer, nullable=True)       # dùng cho GIOI_HAN
+    hard = Column(Boolean, default=True)
+    trong_so = Column(Integer, default=1)
+    ghi_chu = Column(String(200), default='')

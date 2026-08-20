@@ -43,8 +43,10 @@ def main():
             st.Page(pages.page_phan_cong, title='Phân công giảng dạy', url_path='phan-cong'),
             st.Page(pages.page_so_tiet, title='Số tiết khối-môn', url_path='so-tiet'),
         ],
-        'Sắp tới (P3–6)': [
-            st.Page(pages.trang_cau_hinh, title='Cấu hình ràng buộc (P3)', url_path='cau-hinh'),
+        'Cấu hình ràng buộc (P3)': [
+            st.Page(pages.page_cau_hinh, title='Ràng buộc (GV nghỉ / môn cố định / giới hạn)', url_path='cau-hinh'),
+        ],
+        'Sắp tới (P4–6)': [
             st.Page(pages.trang_xep_tkb, title='Xếp TKB (P4)', url_path='xep-tkb'),
             st.Page(pages.trang_xuat, title='Xuất bản (P5)', url_path='xuat-ban'),
             st.Page(pages.trang_nang_cao, title='Nâng cao (P6)', url_path='nang-cao'),
@@ -55,7 +57,7 @@ def main():
     # thông tin file dữ liệu ở sidebar
     st.sidebar.caption('')
     st.sidebar.caption(f'📄 File dữ liệu: `{db.data_path()}`')
-    st.sidebar.caption('Phase hiện tại: 0–2 (Khai báo + Phân công + Số tiết)')
+    st.sidebar.caption('Phase hiện tại: 0–3 (Khai báo + Phân công + Số tiết + Ràng buộc)')
 
     pg.run()
 

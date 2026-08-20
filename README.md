@@ -11,18 +11,23 @@
 
 ---
 
-## 🚀 Trạng thái & Cách chạy (Phase 0–2)
+## 🚀 Trạng thái & Cách chạy (Phase 0–3)
 
-**Đã làm được (Phase 0–2):**
+**Đã làm được (Phase 0–3):**
 - Skeleton **Streamlit** chạy được, lưu trữ = **1 file `data.sqlite`**.
-- Schema SQLite: `co_so, khoi, lop, mon, giao_vien, tiet, ngay_hoc, phan_cong, khoi_mon_tiet`.
+- Schema SQLite: `co_so, khoi, lop, mon, giao_vien, tiet, ngay_hoc, phan_cong, khoi_mon_tiet` + **`rang_buoc`** (P3).
 - Màn **Tổng quan** (dashboard + tạo dữ liệu mẫu + tải/lưu file `.sqlite` + xuất Excel).
 - Trang **Khai báo**: Khối, Lớp, Môn, Giáo viên, Tiết & Buổi, Ngày học.
 - **(P2)** Trang **Số tiết khối–môn**: ma trận khối×môn số tiết/tuần + **phân bổ tiết liên tiếp** (vd `2,1,1`); tổng tiết theo khối.
-- **(P2)** Trang **Phân công giảng dạy**: ma trận Lớp×Môn→Giáo viên (data_editor), nút **Kiểm tra phân công** (thiếu GV/thừa môn/số tiết=0), upsert an toàn.
+- **(P2)** Trang **Phân công giảng dạy**: ma trận Lớp×Môn→Giáo viên, nút **Kiểm tra phân công** (thiếu GV/thừa môn/số tiết=0), upsert an toàn.
+- **(P3)** Trang **Cấu hình ràng buộc**: bảng chỉnh sửa động theo loại —
+  - *Giáo viên nghỉ/bận* (nghỉ cả ngày hoặc bận đúng thứ–buổi–tiết),
+  - *Môn cố định* (phải học đúng thứ–buổi–tiết),
+  - *Giới hạn số tiết mỗi buổi/1 GV*.
+  Lưu thay thế an toàn; dữ liệu ràng buộc solver dùng ở Phase 4.
 - **Dữ liệu mẫu 1 trường THCS 2 buổi** (seed): 1 cơ sở — khối 6–9 — 8 lớp — 12 môn GDPT2018 — 19 GV — 88 phân công.
-- Service **khả thi (PCCM)** đếm quỹ/tải GV; **solver abstraction** + `find_conflicts` (xung đột trùng giờ).
-- **Kiểm thử:** mọi trang render không lỗi (AppTest); logic phân công/số tiết verify (tạm script, không phải test-suite chuẩn).
+- Service **khả thi (PCCM)**; **solver abstraction** + `find_conflicts` (xung đột trùng giờ).
+- **Kiểm thử:** mọi trang render không lỗi (AppTest); logic service verify (tạm script, không phải test-suite chuẩn); bảng mới thêm vào DB cũ an toàn (create_all idempotent).
 
 **Chạy app (dev):**
 ```bash
@@ -37,7 +42,7 @@ Trình duyệt tự mở `http://localhost:8501`.
 - **OR-Tools bị chặn ở tầng mạng** (PyPI trả 404) → MVP dùng **Z3**; kích hoạt `or-tools` trong `requirements.txt` khi mạng cho phép, solver đã được viết dạng abstraction để đổi được.
 - Trên máy dev đang chạy trong môi trường Hermes, `PYTHONPATH` có thể bị rò vào venv dự án → dùng `env -u PYTHONPATH` (hoặc `run.bat` với `set "PYTHONPATH="`) khi chạy/install.
 
-**Phase tiếp theo:** Xem [ROADMAP.md](ROADMAP.md) → Phase 3 (Cấu hình ràng buộc: ngày/buổi/tiết nghỉ, môn cố định, giới hạn…), Phase 4 (Xếp + solver), Phase 5 (xuất bản + đóng gói ZIP/exe).
+**Phase tiếp theo:** Xem [ROADMAP.md](ROADMAP.md) → Phase 4 (**Xếp + solver**: auto bằng Z3/OR-Tools, màn TKB kéo-thả/chỉnh tay, tìm xung đột), Phase 5 (xuất bản + đóng gói ZIP/exe).
 
 ---
 

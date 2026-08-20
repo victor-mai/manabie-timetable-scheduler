@@ -7,8 +7,9 @@ import streamlit as st
 
 from app import db
 from app.models import GiaoVien, Khoi, KhoiMonTiet, Lop, Mon, NgayHoc, Tiet
-from app.services import feasibility, phan_cong as pc_svc, seeder
+from app.services import feasibility, phan_cong as pc_svc, rang_buoc as rb_svc, seeder
 from app.services.import_export import build_workbook
+from streamlit import column_config as cfc
 
 
 # ---------- tiện ích ----------
@@ -276,9 +277,56 @@ def trang_xep_tkb():
     st.info('Sẽ xây ở Phase 4: auto (solver) + xếp tay + tinh chỉnh + tìm xung đột.')
 
 
-def trang_cau_hinh():
-    st.subheader('Cấu hình ràng buộc (Phase 3)')
-    st.info('Sẽ xây ở Phase 3: ngày/buổi/tiết nghỉ, môn cố định, giới hạn số tiết, nguyện vọng GV.')
+def page_cau_hinh():
+    st.subheader('Cấu hình ràng buộc')
+    st.caption('Đây là các ràng buộc solver sẽ tôn trọng khi xếp (Phase 4). Có thể thêm/xoá/sửa bằng bảng dưới.')
+    s = session()
+
+    gv_list = [g.ten for g in s.query(GiaoVien).order_by(GiaoVien.ten).all()]
+    mon_list = [m.ten for m in s.query(Mon).order_by(Mon.ten).all()]
+    thu_opt = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật']
+    buoi_opt = ['Sáng', 'Chiều', 'Tối']
+
+    # ---- 1) GV nghỉ / bận ----
+    st.markdown('#### 1. Giáo viên nghỉ / bận')
+    st.caption('GV + Thứ, **để trống Buổi/Tiết = nghỉ cả ngày**; nhập Buổi + Tiết = bận đúng tiết đó buổi đó.')
+    rows = rb_svc.df_gv_nghi(s)
+    ed_gv = st.data_editor(
+        pd.DataFrame(rows), width='stretch', hide_index=True, num_rows='dynamic', key='ed_rb_gv',
+        column_config={'GV': cfc.SelectboxColumn('GV', options=[''] + gv_list, required=True),
+                       'Thứ': cfc.SelectboxColumn('Thứ', options=thu_opt),
+                       'Buổi': cfc.SelectboxColumn('Buổi', options=buoi_opt, required=False),
+                       'Tiết': cfc.NumberColumn('Tiết', min_value=1, max_value=12)})
+    if st.button('Lưu GV nghỉ'):
+        rb_svc.save_gv_nghi(s, ed_gv.to_dict('records')); s.commit()
+        st.toast('Đã lưu ràng buộc GV nghỉ'); st.rerun()
+
+    # ---- 2) Môn cố định ----
+    st.markdown('#### 2. Môn cố định (phải học đúng thứ – buổi – tiết)')
+    rows = rb_svc.df_mon_co_dinh(s)
+    ed_mon = st.data_editor(
+        pd.DataFrame(rows), width='stretch', hide_index=True, num_rows='dynamic', key='ed_rb_mon',
+        column_config={'Môn': cfc.SelectboxColumn('Môn', options=mon_list, required=True),
+                       'Thứ': cfc.SelectboxColumn('Thứ', options=thu_opt),
+                       'Buổi': cfc.SelectboxColumn('Buổi', options=buoi_opt, required=True),
+                       'Tiết': cfc.NumberColumn('Tiết', min_value=1, max_value=12)})
+    if st.button('Lưu môn cố định'):
+        rb_svc.save_mon_co_dinh(s, ed_mon.to_dict('records')); s.commit()
+        st.toast('Đã lưu môn cố định'); st.rerun()
+
+    # ---- 3) Giới hạn số tiết / buổi ----
+    st.markdown('#### 3. Giới hạn số tiết mỗi buổi cho 1 giáo viên')
+    rows = rb_svc.df_gioi_han(s)
+    ed_gh = st.data_editor(
+        pd.DataFrame(rows), width='stretch', hide_index=True, num_rows='dynamic', key='ed_rb_gh',
+        column_config={'GV': cfc.SelectboxColumn('GV', options=[''] + gv_list, required=True),
+                       'Buổi': cfc.SelectboxColumn('Buổi', options=buoi_opt, required=True),
+                       'Giới hạn (tiết/buổi)': cfc.NumberColumn('Giới hạn (tiết/buổi)', min_value=1, max_value=12)})
+    if st.button('Lưu giới hạn'):
+        rb_svc.save_gioi_han(s, ed_gh.to_dict('records')); s.commit()
+        st.toast('Đã lưu giới hạn'); st.rerun()
+
+    st.caption(f"Tổng: {rb_svc.tong_hop(s)}")
 
 
 def trang_xuat():
