@@ -6,8 +6,8 @@ import pandas as pd
 import streamlit as st
 
 from app import db
-from app.models import GiaoVien, Khoi, Lop, Mon, NgayHoc, Tiet
-from app.services import feasibility, seeder
+from app.models import GiaoVien, Khoi, KhoiMonTiet, Lop, Mon, NgayHoc, Tiet
+from app.services import feasibility, phan_cong as pc_svc, seeder
 from app.services.import_export import build_workbook
 
 
@@ -87,7 +87,7 @@ def _crud_text(title, Model, fields, cols_def, rows_fn):
                 st.error(f'Lỗi: {e}')
     rows = rows_fn(session())
     if rows:
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(rows), width='stretch', hide_index=True)
     else:
         st.info('Chưa có dữ liệu — thêm ở trên hoặc dùng "Tạo dữ liệu mẫu" ở Trang chủ.')
 
@@ -133,7 +133,7 @@ def page_lop():
                 st.error(f'Lỗi: {e}')
     rows = [{'Lớp': l.ten, 'Khối': l.khoi.ten if l.khoi else '', 'Sĩ số': l.si_so}
             for l in s.query(Lop).all()]
-    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True) if rows else st.info('Chưa có lớp.')
+    st.dataframe(pd.DataFrame(rows), width='stretch', hide_index=True) if rows else st.info('Chưa có lớp.')
 
 
 def page_tiet():
@@ -152,7 +152,7 @@ def page_tiet():
             except Exception as e:
                 st.error(f'Lỗi: {e}')
     rows = [{'Buổi': t.buoi, 'Thứ tự': t.stt, 'Nhãn': t.nhan} for t in s.query(Tiet).all()]
-    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True) if rows else st.info('Chưa có tiết.')
+    st.dataframe(pd.DataFrame(rows), width='stretch', hide_index=True) if rows else st.info('Chưa có tiết.')
 
 
 def page_ngay():
@@ -164,7 +164,7 @@ def page_ngay():
         return
     st.caption('Bật/tắt ngày học ở cột "Học".')
     edit = st.data_editor(pd.DataFrame([{'Thứ': n.nhan, 'Học': bool(n.active)} for n in rows]),
-                          use_container_width=True, hide_index=True, key='ded_ngay')
+                          width='stretch', hide_index=True, key='ded_ngay')
     if st.button('Lưu ngày học'):
         for n, ch in zip(rows, edit['Học'].tolist()):
             n.active = bool(ch)
@@ -173,15 +173,102 @@ def page_ngay():
         st.rerun()
 
 
-# ---------- trang Phase 2+ (placeholder) ----------
-def trang_phan_cong():
-    st.subheader('Phân công giảng dạy (Phase 2)')
-    st.info('Sẽ xây ở Phase 2: phân công GV–môn–lớp kèm kiểm tra trùng & chỉ số khả thi.')
+# ---------- Phase 2 ----------
+def page_so_tiet():
+    st.subheader('Khối – Môn – Số tiết')
+    s = session()
+    khoi_list = s.query(Khoi).order_by(Khoi.stt).all()
+    mon_list = s.query(Mon).order_by(Mon.ten).all()
+    if not khoi_list or not mon_list:
+        st.info('Cần khai báo Khối và Môn trước (hoặc dùng "Tạo dữ liệu mẫu" ở Trang chủ).')
+        return
+
+    kmt = {(k.khoi_id, k.mon_id): k for k in s.query(KhoiMonTiet).all()}
+    k_by_ten = {k.ten: k.id for k in khoi_list}
+    mcols = [m.ten for m in mon_list]
+
+    st.caption('Ô = số tiết/tuần môn đó của khối (0 = môn không có trong chương trình khối).')
+    df = [{**{'Khối': k.ten}, **{m.ten: (kmt[(k.id, m.id)].so_tiet if (k.id, m.id) in kmt else 0) for m in mon_list}}
+          for k in khoi_list]
+    edited = st.data_editor(pd.DataFrame(df), width='stretch', hide_index=True, key='ed_so_tiet')
+
+    st.caption('Phân bổ tiết liên tiếp (tuỳ chọn), vd Toán 4 tiết -> `2,1,1`. Để trống nếu không có.')
+    df_bo = [{**{'Khối': k.ten},
+              **{m.ten: (kmt[(k.id, m.id)].phan_bo if (k.id, m.id) in kmt and kmt[(k.id, m.id)].so_tiet else '') for m in mon_list}}
+             for k in khoi_list]
+    ed_bo = st.data_editor(pd.DataFrame(df_bo), width='stretch', hide_index=True, key='ed_phanbo')
+
+    if st.button('Lưu số tiết khối–môn'):
+        for _, r in edited.iterrows():
+            kid = k_by_ten[r['Khối']]
+            for m in mon_list:
+                v = int(r[m.ten] or 0)
+                pb = ''
+                if v > 0:
+                    poc = ed_bo.loc[(ed_bo['Khối'] == r['Khối'])]
+                    pb = (poc.iloc[0][m.ten] or '') if not poc.empty else ''
+                pc_svc.set_so_tiet(s, kid, m.id, v, phan_bo=pb.strip())
+        s.commit()
+        st.toast('Đã lưu số tiết')
+        st.rerun()
+
+    prog = pc_svc.program_map(s)
+    st.caption('Tổng tiết/tuần theo khối:')
+    for k in khoi_list:
+        st.caption(f'  • {k.ten}: **{sum(prog.get(k.id, {}).values())} tiết/tuần**')
 
 
-def trang_so_tiet():
-    st.subheader('Khối – Môn – Số tiết (Phase 2)')
-    st.info('Sẽ xây ở Phase 2: số tiết/tuần theo khối-môn + phân bổ tiết liên tiếp (vd 2,1,1).')
+def page_phan_cong():
+    st.subheader('Phân công giảng dạy (GV – Môn – Lớp)')
+    s = session()
+    prog = pc_svc.program_map(s)
+    if not prog:
+        st.info('Chưa có chương trình (số tiết khối–môn). Vào "Số tiết khối-môn" đặt số tiết trước.')
+        return
+
+    lop_id_of = {l.ten: l.id for l in s.query(Lop).all()}
+    mon_ten_of = {m.id: m.ten for m in s.query(Mon).all()}
+    mon_id_of = {m.ten: m.id for m in s.query(Mon).all()}
+    gv = {g.id: g.ten for g in s.query(GiaoVien).all()}
+    lop = {l.id: l for l in s.query(Lop).all()}
+    pc = pc_svc.pc_map(s)
+
+    rows = []
+    for lid in sorted(lop, key=lambda x: (lop[x].khoi_id, lop[x].ten)):
+        for mid, so in prog.get(lop[lid].khoi_id, {}).items():
+            gvid = pc.get((lid, mid))
+            rows.append({'Lớp': lop[lid].ten, 'Môn': mon_ten_of.get(mid, '?'),
+                         'Số tiết': so, 'Giáo viên': gv.get(gvid, '')})
+
+    gv_names = ['' ] + sorted(gv.values())
+    gv_by_name = {t: i for i, t in gv.items()}
+
+    from streamlit import column_config as cfc
+    edited = st.data_editor(
+        pd.DataFrame(rows), width='stretch', hide_index=True, key='ed_phan_cong',
+        column_config={'Giáo viên': cfc.SelectboxColumn('Giáo viên', options=gv_names, required=False)},
+        disabled=['Lớp', 'Môn', 'Số tiết'])
+
+    col_b, col_c = st.columns([3, 1])
+    if col_b.button('Lưu phân công'):
+        for _, r in edited.iterrows():
+            lop_id = lop_id_of.get(r['Lớp'])
+            mon_id = mon_id_of.get(r['Môn'])
+            if lop_id is None or mon_id is None:
+                continue
+            gvid = gv_by_name.get(r['Giáo viên'])
+            pc_svc.set_phan_cong(s, lop_id, mon_id, gvid)
+        s.commit()
+        st.toast('Đã lưu phân công')
+        st.rerun()
+
+    if col_c.button('Kiểm tra phân công'):
+        issues = pc_svc.kiem_tra(s)
+        if issues:
+            st.warning(f'Có {len(issues)} vấn đề:')
+            st.dataframe(pd.DataFrame(issues), width='stretch', hide_index=True)
+        else:
+            st.success('Phân công khả thi: mọi (lớp, môn) đã có GV & số tiết.')
 
 
 def trang_xep_tkb():

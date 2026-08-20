@@ -39,9 +39,11 @@ def main():
             st.Page(pages.page_tiet, title='Tiết & Buổi', url_path='tiet'),
             st.Page(pages.page_ngay, title='Ngày học', url_path='ngay-hoc'),
         ],
-        'Sắp tới (Phase 2–6)': [
-            st.Page(pages.trang_phan_cong, title='Phân công (P2)', url_path='phan-cong'),
-            st.Page(pages.trang_so_tiet, title='Số tiết khối-môn (P2)', url_path='so-tiet'),
+        'Phân công & Số tiết (P2)': [
+            st.Page(pages.page_phan_cong, title='Phân công giảng dạy', url_path='phan-cong'),
+            st.Page(pages.page_so_tiet, title='Số tiết khối-môn', url_path='so-tiet'),
+        ],
+        'Sắp tới (P3–6)': [
             st.Page(pages.trang_cau_hinh, title='Cấu hình ràng buộc (P3)', url_path='cau-hinh'),
             st.Page(pages.trang_xep_tkb, title='Xếp TKB (P4)', url_path='xep-tkb'),
             st.Page(pages.trang_xuat, title='Xuất bản (P5)', url_path='xuat-ban'),
@@ -53,7 +55,7 @@ def main():
     # thông tin file dữ liệu ở sidebar
     st.sidebar.caption('')
     st.sidebar.caption(f'📄 File dữ liệu: `{db.data_path()}`')
-    st.sidebar.caption('Phase hiện tại: 0–1 (Khai báo + dữ liệu)')
+    st.sidebar.caption('Phase hiện tại: 0–2 (Khai báo + Phân công + Số tiết)')
 
     pg.run()
 
