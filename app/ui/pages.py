@@ -32,7 +32,7 @@ def home():
     st.caption(f"Khung giờ: {feasibility.khung_gio(session())}")
 
     st.divider()
-    if st.button('Tạo dữ liệu mẫu 1 trường THCS (2 buổi)', help='Chỉ chạy khi DB trống'):
+    if st.button('Tạo dữ liệu mẫu 1 trường THCS', help='Chỉ chạy khi DB trống. Khối 6-7: 1 buổi sáng; khối 8-9: thêm buổi chiều.'):
         r = seeder.seed(session())
         st.write(r)
         st.rerun()
@@ -97,6 +97,23 @@ def page_khoi():
     _crud_text('Khai báo — Khối', Khoi, [('ten', 'Tên khối (vd: Khối 6)')],
                [('ten', 'Khối')],
                lambda s: [{'ten': k.ten} for k in s.query(Khoi).order_by(Khoi.stt).all()])
+    st.caption('Config buổi học theo khối: bật "Học chiều" nếu khối này học 2 buổi/ngày (Sáng + Chiều).')
+    s = session()
+    rows = s.query(Khoi).order_by(Khoi.stt).all()
+    if not rows:
+        return
+    kh_opt = {k.id: k.ten for k in rows}
+    ed = st.data_editor(
+        pd.DataFrame([{'Khối': k.ten, 'Học chiều': bool(k.hoc_chieu)} for k in rows]),
+        width='stretch', hide_index=True, key='ed_khoi_chieu',
+        column_config={'Học chiều': cfc.CheckboxColumn('Học chiều', help='2 buổi/ngày (Sáng + Chiều)')})
+    if st.button('Lưu buổi học theo khối'):
+        for _, r in ed.iterrows():
+            kid = next((k for k, t in kh_opt.items() if t == r['Khối']), None)
+            if kid:
+                s.query(Khoi).filter_by(id=kid).update({'hoc_chieu': bool(r['Học chiều'])})
+        s.commit()
+        st.toast('Đã lưu buổi học theo khối'); st.rerun()
 
 
 def page_mon():
@@ -141,7 +158,7 @@ def page_tiet():
     st.subheader('Khai báo — Tiết học & Buổi')
     s = session()
     with st.form('form_tiet'):
-        buoi = st.selectbox('Buổi', ['Sáng', 'Chiều', 'Tối'])
+        buoi = st.selectbox('Buổi', ['Sáng', 'Chiều'])
         stt = st.number_input('Thứ tự trong buổi (1..n)', min_value=1, value=1, step=1)
         nhan = st.text_input('Nhãn (vd: T5)')
         if st.form_submit_button('Thêm tiết'):
@@ -369,7 +386,7 @@ def page_cau_hinh():
     gv_list = [g.ten for g in s.query(GiaoVien).order_by(GiaoVien.ten).all()]
     mon_list = [m.ten for m in s.query(Mon).order_by(Mon.ten).all()]
     thu_opt = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật']
-    buoi_opt = ['Sáng', 'Chiều', 'Tối']
+    buoi_opt = ['Sáng', 'Chiều']
 
     # ---- 1) GV nghỉ / bận ----
     st.markdown('#### 1. Giáo viên nghỉ / bận')

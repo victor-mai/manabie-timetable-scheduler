@@ -24,6 +24,7 @@ class Khoi(Base):
     id = Column(Integer, primary_key=True)
     ten = Column(String(50), nullable=False)
     stt = Column(Integer, default=0)
+    hoc_chieu = Column(Boolean, default=False)   # True = khối học thêm buổi Chiều (2 buổi/ngày)
     lop = relationship('Lop', back_populates='khoi')
     khoimontiet = relationship('KhoiMonTiet', back_populates='khoi')
 
@@ -60,10 +61,11 @@ class GiaoVien(Base):
 
 
 class Tiet(Base):
-    """Tiết học, thuộc một buổi (Sáng/Chiều/Tối) theo thứ tự trong buổi."""
+    """Tiết học, thuộc một buổi (Sáng/Chiều) theo thứ tự trong buổi.
+    (THCS/tổ chức thường không học ca tối → chỉ Sáng/Chiều.)"""
     __tablename__ = 'tiet'
     id = Column(Integer, primary_key=True)
-    buoi = Column(String(20), default='Sáng')      # Sáng | Chiều | Tối
+    buoi = Column(String(20), default='Sáng')      # Sáng | Chiều
     stt = Column(Integer, default=1)               # 1..n trong buổi
     nhan = Column(String(30))                       # nhãn, vd 'T1'
 

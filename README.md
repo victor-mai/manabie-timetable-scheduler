@@ -11,6 +11,9 @@
 
 > 📄 **HANDOFF (session tiếp theo đọc đầu tiên):** xem **[HANDOFF.md](HANDOFF.md)** — trạng thái, cách chạy, quirk môi trường, việc còn lại.
 
+> 📐 **Định mức số tiết THCS + chuẩn buổi học:** xem **[references/dinh-muc-tiet-thcs.md](references/dinh-muc-tiet-thcs.md)** — số tiết/tuần theo khối (GDPT), đã đối chiếu khớp seeder; config buổi theo khối (1 buổi / 2 buổi, bỏ ca tối).
+> 🗓️ **Checklist buổi gặp Hiệu trưởng:** xem **[references/checklist-gap-hieu-truong.md](references/checklist-gap-hieu-truong.md)** — dữ liệu cần trường chuẩn bị + bộ ràng buộc CỨNG/MỀM cần hỏi để model đúng.
+
 ---
 
 ## 🚀 Trạng thái & Cách chạy (Phase 0–5)
@@ -21,9 +24,9 @@
 - **Khai báo** (Khối/Lớp/Môn/GV/Tiết&Buổi/Ngày) + tải/lưu file `.sqlite` + xuất Excel bảng nền.
 - **(P2)** **Số tiết khối–môn** (+ phân bổ `2,1,1`); **Phân công giảng dạy** + kiểm tra khả thi.
 - **(P3)** **Cấu hình ràng buộc**: GV nghỉ/bận, môn cố định, giới hạn tiết/GV/buổi.
-- **(P4)** **Xếp TKB**: Auto (Z3 SAT; OR-Tools bị chặn mạng — abstraction để đổi) → 1 trường THCS 8 lớp **sat ~11s / 208 tiết / 0 xung đột**; **xem lịch theo lớp / theo giáo viên** (ô = Môn — GV / Lớp · Môn), **xếp–chỉnh tay**, tìm xung đột.
+- **(P4)** **Xếp TKB**: Auto (Z3 SAT; OR-Tools bị chặn mạng — abstraction để đổi) → 1 trường THCS 8 lớp **sat / 236 tiết / 0 xung đột**; **xem lịch theo lớp / theo giáo viên** (ô = Môn — GV / Lớp · Môn), **xếp–chỉnh tay**, tìm xung đột.
 - **(P5)** **Xuất bản**: xuất **Excel TKB** theo **lớp** / theo **giáo viên** / **toàn trường** (mỗi lớp 1 sheet).
-- **Dữ liệu mẫu** THCS 2 buổi (seed): khối 6–9, 8 lớp, 12 môn, 19 GV, 88 phân công.
+- **Dữ liệu mẫu** THCS (seed): khối 6–9, 8 lớp, **13 môn** (kể cả GD địa phương), 20 GV, 104 phân công, số tiết/tuần theo **định mức GDPT THCS** (`references/dinh-muc-tiet-thcs.md`); khối 6–7 học **1 buổi sáng**, khối 8–9 học thêm **buổi chiều** (config ở Khai báo → Khối).
 - **Kiểm thử:** mọi trang render (AppTest); solver + service verify (tạm script, không phải test-suite chuẩn).
 
 **Chạy app (dev):**

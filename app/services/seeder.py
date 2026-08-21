@@ -1,6 +1,8 @@
-"""Dữ liệu mẫu: 1 trường THCS (2 buổi) — giả lập để test từ Phase 1.
+"""Dữ liệu mẫu: 1 trường THCS (học **1 buổi/ngày**) — giả lập để test từ Phase 1.
 
-Số tiết/tuần chỉ là số mẫu hợp lý (theo GDPT 2018), nhà trường sẽ chỉnh số thật.
+Số tiết/tuần theo **định mức GDPT THCS** (`references/dinh-muc-tiet-thcs.md`, quy đổi
+35 tuần/năm). Nhà trường sẽ chỉnh số thật theo khung chương trình của mình.
+Lưu ý: Công nghệ lớp 8-9 định mức 52 tiết/năm ≈ 1.49/tuần → làm tròn lên 2 tiết/tuần.
 """
 from app.models import (CoSo, GiaoVien, Khoi, KhoiMonTiet, Lop, Mon, NgayHoc,
                         PhanCong, Tiet)
@@ -11,15 +13,16 @@ MON = [
     ('KHTN', 'Khoa học tự nhiên'), ('LS-DL', 'Lịch sử và Địa lí'),
     ('GDCD', 'Giáo dục công dân'), ('TIN', 'Tin học'), ('CN', 'Công nghệ'),
     ('TD', 'Giáo dục thể chất'), ('HDTN', 'Hoạt động trải nghiệm - hướng nghiệp'),
-    ('AN', 'Âm nhạc'), ('MT', 'Mĩ thuật'),
+    ('AN', 'Âm nhạc'), ('MT', 'Mĩ thuật'), ('DP', 'Giáo dục địa phương'),
 ]
 
-# số tiết/tuần theo khối (chỉ môn nào khối đó có)
+# Số tiết/tuần theo định mức GDPT THCS (quy đổi năm → 35 tuần/năm).
+# Khối 6-7: tổng 29 tiết/tuần; Khối 8-9: 30 tiết/tuần (CN làm tròn 52/năm lên 2/tuần).
 SO_TIET = {
-    6: {'TOAN':4, 'NV':4, 'TA':3, 'KHTN':4, 'LS-DL':3, 'GDCD':1, 'TIN':2, 'CN':2, 'TD':2, 'HDTN':1, 'AN':1, 'MT':1},
-    7: {'TOAN':4, 'NV':4, 'TA':3, 'KHTN':4, 'LS-DL':3, 'GDCD':1, 'TIN':2, 'CN':2, 'TD':2, 'HDTN':1, 'AN':1, 'MT':1},
-    8: {'TOAN':4, 'NV':4, 'TA':3, 'KHTN':3, 'LS-DL':2, 'GDCD':1, 'TIN':2, 'CN':2, 'TD':2, 'HDTN':1},
-    9: {'TOAN':4, 'NV':4, 'TA':3, 'KHTN':3, 'LS-DL':2, 'GDCD':1, 'TIN':2, 'CN':2, 'TD':2, 'HDTN':1},
+    6: {'TOAN':4, 'NV':4, 'TA':3, 'KHTN':4, 'LS-DL':3, 'GDCD':1, 'TIN':1, 'CN':1, 'TD':2, 'HDTN':3, 'AN':1, 'MT':1, 'DP':1},
+    7: {'TOAN':4, 'NV':4, 'TA':3, 'KHTN':4, 'LS-DL':3, 'GDCD':1, 'TIN':1, 'CN':1, 'TD':2, 'HDTN':3, 'AN':1, 'MT':1, 'DP':1},
+    8: {'TOAN':4, 'NV':4, 'TA':3, 'KHTN':4, 'LS-DL':3, 'GDCD':1, 'TIN':1, 'CN':2, 'TD':2, 'HDTN':3, 'AN':1, 'MT':1, 'DP':1},
+    9: {'TOAN':4, 'NV':4, 'TA':3, 'KHTN':4, 'LS-DL':3, 'GDCD':1, 'TIN':1, 'CN':2, 'TD':2, 'HDTN':3, 'AN':1, 'MT':1, 'DP':1},
 }
 
 # phân bổ tiết liên tiếp (thử 1 môn theo ví dụ OLM '2,1,1')
@@ -36,7 +39,7 @@ GV = [
     ('DUONG', 'Lê Văn Dương', 'CN'), ('THANH', 'Bùi Minh Thanh', 'TIN'),
     ('PHUONG', 'Vũ Thị Phương', 'TD'), ('GIA', 'Nguyễn Thế Gia', 'TD'),
     ('TIEP', 'Cao Văn Tiếp', 'HDTN'), ('YEN', 'Trịnh Thu Yến', 'AN'),
-    ('LAM', 'Phạm Quỳnh Lam', 'MT'),
+    ('LAM', 'Phạm Quỳnh Lam', 'MT'), ('HUYEN', 'Đỗ Thị Huyền', 'DP'),
 ]
 
 # Giả lập: 1 cơ sở, 8 lớp (2 mỗi khối), si_so mẫu
@@ -76,7 +79,8 @@ def seed(session) -> dict:
 
     khoi_obj = {}
     for k in (6, 7, 8, 9):
-        ko = Khoi(ten=f'Khối {k}', stt=k)
+        ko = Khoi(ten=f'Khối {k}', stt=k,
+                  hoc_chieu=(k >= 8))   # khối 8-9 học thêm buổi chiều (2 buổi/ngày)
         session.add(ko)
         session.flush()
         khoi_obj[k] = ko
@@ -88,10 +92,11 @@ def seed(session) -> dict:
         session.flush()
         lop_obj.append(lo)
 
-    # tiết: 2 buổi, mỗi buổi 4 tiết
-    for buoi, tiet_list in (('Sáng', ['T1', 'T2', 'T3', 'T4']),
-                            ('Chiều', ['T5', 'T6', 'T7', 'T8'])):
-        for i, n in enumerate(tiet_list, start=1):
+    # tiết: khối 6-7 học 1 buổi Sáng (T1-T5); khối 8-9 thêm buổi Chiều (T6-T8)
+    # → 1 ngày tổng 5 (Sáng) hoặc 8 (Sáng 5 + Chiều 3) tiết · 6 ngày/tuần
+    for buoi, lista in (('Sáng', ['T1', 'T2', 'T3', 'T4', 'T5']),
+                        ('Chiều', ['T6', 'T7', 'T8'])):
+        for i, n in enumerate(lista, start=1):
             session.add(Tiet(buoi=buoi, stt=i, nhan=n))
 
     # ngày học: Thứ 2 - 7 học (Chủ nhật nghỉ)

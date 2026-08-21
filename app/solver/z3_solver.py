@@ -12,9 +12,9 @@ from collections import defaultdict
 
 from z3 import (Bool, If, Not, Solver, Sum, sat, unknown, unsat)
 
-from app.models import (KhoiMonTiet, Lop, NgayHoc, PhanCong, RangBuoc, Tiet)
+from app.models import (Khoi, KhoiMonTiet, Lop, NgayHoc, PhanCong, RangBuoc, Tiet)
 
-BUOI_ORDER = {'Sáng': 0, 'Chiều': 1, 'Tối': 2}
+BUOI_ORDER = {'Sáng': 0, 'Chiều': 1}
 
 
 def build_slots(session):
@@ -61,6 +61,16 @@ def solve_timetable(session, timeout_ms=60000):
         for s in range(n_slot):
             B[(a, s)] = Bool(f'x{a}_{s}')
     v = B  # alias Bool x[a][s]
+
+    # 0) khối hoc_chieu=False → không được dùng ô buổi Chiều (ép biến về False)
+    lop_khoi = {l.id: l.khoi_id for l in session.query(Lop).all()}
+    khoi_chieu = {k.id: bool(k.hoc_chieu) for k in session.query(Khoi).all()}
+    for a in range(n_assign):
+        khoi = lop_khoi.get(assigns[a]['lop_id'])
+        buoi_ok = ('Sáng', 'Chiều') if khoi_chieu.get(khoi) else ('Sáng',)
+        for s in range(n_slot):
+            if slot_list[s][1] not in buoi_ok:
+                sol.add(Not(v[(a, s)]))
 
     # 1) đủ số tiết mỗi (lớp,mon,gv)
     for a in range(n_assign):

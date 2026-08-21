@@ -1,8 +1,18 @@
 """Dịch vụ TKB (Phase 4): solve + lưu kết quả vào bảng `tkb`, đọc, lưới theo lớp, xung đột."""
 
-from app.models import GiaoVien, Lop, Mon, PhanCong, Tiet, Tkb
+from app.models import GiaoVien, Khoi, Lop, Mon, PhanCong, Tiet, Tkb
 from app.solver import solver as sv
 from app.solver.z3_solver import BUOI_ORDER, build_slots
+
+
+def allowed_buoi(session, *khoi_ids):
+    """Set buổi (set[str]) được học. Nếu không truyền khối → mặc định chỉ Sáng.
+    Khối hoc_chieu=True được thêm Chiều."""
+    ids = [x for x in khoi_ids if x is not None]
+    if not ids:
+        return {'Sáng'}
+    chieu = any(bool(k.hoc_chieu) for k in session.query(Khoi).filter(Khoi.id.in_(ids)).all())
+    return {'Sáng', 'Chiều'} if chieu else {'Sáng'}
 
 
 def da_co(session) -> bool:
@@ -46,14 +56,17 @@ def _replace_all(session, cells):
 
 
 def grid(session, lop_id):
-    """Lưới TKB của 1 lớp: rows = tiết (buổi+stt), cols = ngày, ô = 'MA - Ten GV'."""
+    """Lưới TKB của 1 lớp: rows = tiết (buổi+stt), cols = ngày, ô = 'MA - Ten GV'.
+    Chỉ hiện buổi mà khối của lớp được học (hoc_chieu)."""
     slot_list, _ = build_slots(session)
+    lop = session.query(Lop).get(lop_id)
+    buoi_ok = allowed_buoi(session, lop.khoi_id if lop else None)
     days = sorted({s[0] for s in slot_list})
     tiet_labels = []
     seen = set()
     for _thu, buoi, stt in slot_list:
         key = (buoi, stt)
-        if key not in seen:
+        if key not in seen and buoi in buoi_ok:
             seen.add(key)
             tiet_labels.append(f'{buoi} {stt}')
     mon = {m.id: m.ma for m in session.query(Mon).all()}
@@ -68,14 +81,18 @@ def grid(session, lop_id):
 
 
 def grid_gv(session, gv_id):
-    """Lịch giảng dạy của 1 GV: rows = tiết, cols = ngày, ô = 'Lớp · Môn'."""
+    """Lịch giảng dạy của 1 GV: rows = tiết, cols = ngày, ô = 'Lớp · Môn'.
+    Chỉ hiện buổi mà các lớp GV dạy dùng (hợp của các khối)."""
     slot_list, _ = build_slots(session)
+    lop_ids = {t.lop_id for t in session.query(Tkb).filter_by(gv_id=gv_id).all()}
+    khoi_ids = {l.khoi_id for l in session.query(Lop).filter(Lop.id.in_(lop_ids or {-1})).all()}
+    buoi_ok = allowed_buoi(session, *khoi_ids)
     days = sorted({s[0] for s in slot_list})
     tiet_labels = []
     seen = set()
     for _thu, buoi, stt in slot_list:
         key = (buoi, stt)
-        if key not in seen:
+        if key not in seen and buoi in buoi_ok:
             seen.add(key)
             tiet_labels.append(f'{buoi} {stt}')
     mon = {m.id: m.ma for m in session.query(Mon).all()}
